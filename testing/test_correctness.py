@@ -4,7 +4,7 @@ Make sure you follow these naming conventions: https://docs.pytest.org/en/reorga
 for your new tests/classes/python files or else they might be skipped.
 """
 from utils import *
-#from numc import Matrix
+from numc import Matrix
 
 """
 For each operation, you should write tests to test correctness on matrices of different sizes.

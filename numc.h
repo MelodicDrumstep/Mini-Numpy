@@ -6,6 +6,10 @@
  * It also has the matrix that is being wrapped
  * is of type PyObject
  */
+
+// This struct contains the actual matrix object pointer
+// and PyObject_HEAD : to enable this struct be a python object
+// and PyObject * shape : to store the shape of the matrix
 typedef struct {
     PyObject_HEAD
     matrix* mat;
