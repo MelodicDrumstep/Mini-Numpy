@@ -12,6 +12,8 @@
 #include <x86intrin.h>
 #endif
 
+//#define DEBUG
+
 /* Below are some intel intrinsics that might be useful
  * void _mm256_storeu_pd (double * mem_addr, __m256d a)
  * __m256d _mm256_set1_pd (double a)
@@ -67,6 +69,12 @@ int allocate_matrix(matrix **mat, int rows, int cols)
     (*mat) -> ref_cnt = 1;
     (*mat) -> parent = NULL;
     (*mat) -> data = (double *)malloc(sizeof(double) * rows * cols);
+    if ((*mat) -> data == NULL) 
+    {
+        free(*mat);  // Free the allocated matrix struct if data allocation fails
+        *mat = NULL;
+        return -1;
+    }
     for(int i = 0; i < rows * cols; i++)
     {
         (*mat) -> data[i] = 0;
@@ -110,13 +118,28 @@ void deallocate_matrix(matrix *mat) {
     {
         return;
     }
-    if((mat -> parent == NULL && mat -> ref_cnt == 1) || (mat -> parent != NULL && mat -> parent -> ref_cnt == 1))
-    {
-        free(mat -> data);
-        free(mat);
-        return;
-    }
+    mat -> ref_cnt--;
+    //Whatever it is, I have to drop the refcnt by 1
     
+    if(mat -> ref_cnt == 0)
+    { //Now refcnt drop to 0, I have to free this mat
+        if(mat -> parent != NULL)
+        {
+            mat -> parent -> ref_cnt--;
+            if(mat -> parent -> ref_cnt == 0)
+            {
+                deallocate_matrix(mat -> parent);
+                //recursively apply it mat -> parent
+            }
+        }
+        else
+        {
+            //If it's not a slice, then I have to free the data
+            free(mat -> data);
+        }
+        //No matter what it is, I have to free the mat * pointer
+        free(mat);
+    }
 }
 
 /*
@@ -182,7 +205,8 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
-int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) 
+{
     if(mat1 -> cols != mat2 -> rows || result -> rows != mat1 -> rows || result -> cols != mat2 -> cols)
     {
         return -1;
@@ -233,27 +257,37 @@ int fast_pow(int a, int b) {
 */
 int pow_matrix(matrix *result, matrix *mat, int pow) 
 {
+    #ifdef DEBUG
+    printf("Start! pow is : %d\n", pow);
+    #endif 
+
     if(pow < 0)
     {
         return -1;
     }
+    if(mat -> rows != mat -> cols)
+    {
+        //The prerequisite for a power of matrix 
+        //it that it's rectangular
+        return -1;
+    }
+    if(result -> rows != mat -> rows || result -> cols != mat -> cols)
+    {
+        return -1;
+    }
+    for(int i = 0; i < mat -> rows * mat -> cols; i++)
+    {
+        if(i % (mat -> cols + 1) == 0)
+        {
+            result -> data[i] = 1;
+        }
+        else
+        {
+            result -> data[i] = 0;
+        }
+    }
     if(pow == 0)
     {
-        if(result -> rows != mat -> rows || result -> cols != mat -> cols)
-        {
-            return -1;
-        }
-        for(int i = 0; i < mat -> rows * mat -> cols; i++)
-        {
-            if(i % (mat -> cols + 1) == 0)
-            {
-                result -> data[i] = 1;
-            }
-            else
-            {
-                result -> data[i] = 0;
-            }
-        }
         return 0;
     }
     matrix * temp;
@@ -267,22 +301,56 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
     }
     while(pow > 0)
     {
+        #ifdef DEBUG
+        printf("In loop! pow is : %d\n", pow);
+        #endif
+
         if(pow & 1)
         {
-            mul_matrix(result, result, temp);
+            matrix * temp3;
+            if(allocate_matrix(&temp3, result -> rows, result -> cols) == -1)
+            {
+                return -1;
+            }
+            mul_matrix(temp3, result, temp);
+            for(int i = 0; i < mat -> rows * mat -> cols; i++)
+            {
+                result -> data[i] = temp3 -> data[i];
+            }
+            deallocate_matrix(temp3);
+
+            #ifdef DEBUG 
+            printf("the result matrix here is : \n" );
+            for(int i = 0; i < result -> rows; i++)
+            {
+                for(int j = 0; j < result -> cols; j++)
+                {
+                    printf("%lf ", result -> data[i * result -> cols + j]);
+                }
+                printf("\n");
+            }
+            #endif 
         }
-        pow <<= 1;
-        matrix * temp2;
-        if(allocate_matrix(&temp2, mat -> rows, mat -> cols) == -1)
+        pow >>= 1;
+
+        #ifdef DEBUG
+        printf("After pow >> = 1! pow is : %d\n", pow);
+        #endif 
+
+        if(pow > 0)
         {
-            return -1;
+            matrix * temp2;
+            if(allocate_matrix(&temp2, mat -> rows, mat -> cols) == -1)
+            {
+                return -1;
+            }
+            mul_matrix(temp2, temp, temp);
+            for(int i = 0; i < mat -> rows * mat -> cols; i++)
+            {
+                temp -> data[i] = temp2 -> data[i];
+            }
+            deallocate_matrix(temp2);
         }
-        mul_matrix(temp2, temp, temp);
-        for(int i = 0; i < mat -> rows * mat -> cols; i++)
-        {
-            temp -> data[i] = temp2 -> data[i];
-        }
-        deallocate_matrix(temp2);
     }
     return 0;
 }

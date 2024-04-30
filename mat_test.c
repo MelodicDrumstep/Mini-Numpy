@@ -3,6 +3,8 @@
 #include "matrix.h"
 #include <stdio.h>
 
+//#define DEBUG
+
 /* Test Suite setup and cleanup functions: */
 int init_suite(void) { return 0; }
 int clean_suite(void) { return 0; }
@@ -136,7 +138,32 @@ void pow_test(void) {
   set(mat, 0, 1, 1);
   set(mat, 1, 0, 1);
   set(mat, 1, 1, 0);
+
+  #ifdef DEBUG
+  int row = mat -> rows;
+  int col = mat -> cols;
+  for(int i = 0; i < row; i++)
+  {
+    for(int j = 0; j < col; j++)
+    {
+      printf("%d, %d : %f \n", i, j, get(mat, i, j));
+    }
+  }
+  printf("\n");
+  #endif
+  
   pow_matrix(result, mat, 3);
+
+  #ifdef DEBUG
+  for(int i = 0; i < row; i++)
+  {
+    for(int j = 0; j < col; j++)
+    {
+      printf("%d, %d : %f \n", i, j, get(result, i, j));
+    }
+  }
+  #endif
+
   CU_ASSERT_EQUAL(get(result, 0, 0), 3);
   CU_ASSERT_EQUAL(get(result, 0, 1), 2);
   CU_ASSERT_EQUAL(get(result, 1, 0), 2);
@@ -274,8 +301,8 @@ int main (void)
    }
 
   // Run all tests using the basic interface
-  CU_basic_set_mode(CU_BRM_NORMAL);
-  // CU_basic_set_mode(CU_BRM_VERBOSE);
+  //CU_basic_set_mode(CU_BRM_NORMAL);
+  CU_basic_set_mode(CU_BRM_VERBOSE);
   CU_basic_run_tests();
   printf("\n");
   CU_basic_show_failures(CU_get_failure_list());
