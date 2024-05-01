@@ -218,3 +218,175 @@ static PyObject *Matrix61c_add(Matrix61c* self, PyObject* args)
 
 其他的都类似， 就不赘述啦
 
+#### 矩阵运算加速
+
+写完了接口和衔接部分， 接下来来写一下矩阵运算加速的部分。这里的加速技巧涉及：
+
++ 循环展开
++ 函数内联
++ 向量化 SIMD
++ OpenMP
+
+性能调优也是我做这个 lab 的最大动力（其次是了解 python 如何用 C 写底层）
+
+首先， 我把原来的版本复制到了 matrix_old.h 里面， 作为 baseline 参考。
+
+先来看看不作任何优化的版本的速度：（矩阵为1000 x 1000）
+
+```shell
+Matrix Addition: 0.001604 seconds
+Matrix Multiplication: 2.465514 seconds
+Matrix Power: 4.744177 seconds
+Matrix Negation: 0.001320 seconds
+Matrix Absolute: 0.001466 seconds
+```
+
+
+然后来看看开了 -O3 编译优化之后：
+
+```shell
+Matrix Addition: 0.000815 seconds
+Matrix Multiplication: 0.617334 seconds
+Matrix Power: 1.238319 seconds
+Matrix Negation: 0.000450 seconds
+Matrix Absolute: 0.000429 seconds
+```
+
+看来 -O3 是真的强， 很多都优化到 1/3 - 1/4 了。
+-O3 会做一些函数内联、 循环展开、 向量化之类的工作。 不过编译器肯定做的优化不是最好的， 我可以自己再试试写这些优化。 下方都是关闭编译器优化后的运行时间。
+
+##### 函数内联
+
+我们要内联什么样的函数？ 首先， 函数调用是有开销的， 要维护内存里的栈。 所以对于小型函数和频繁调用的函数， 我们可以采取函数内联的策略加速代码。
+基于这个原则，我内联了小型函数 get / set， 和频繁调用的函数 allocate / deallocate。 还是要来看一下实战效果：
+
+``` shell
+testing old matrix
+Matrix Addition: 0.001689 seconds
+Matrix Multiplication: 2.686311 seconds
+Matrix Power: 5.069591 seconds
+Matrix Negation: 0.001357 seconds
+Matrix Absolute: 0.001581 seconds
+testing new matrix
+Matrix Addition: 0.002542 seconds
+Matrix Multiplication: 2.514559 seconds
+Matrix Power: 5.103641 seconds
+Matrix Negation: 0.001718 seconds
+Matrix Absolute: 0.001812 seconds
+```
+
+oh no, 效果好像不咋样. 所以我把 allocate 和 deallocate 的内联取消了。
+
+为什么这里内联之后代码反而会变慢？ 因为 allocate/deallocate 都是很大的函数， 内联它会导致代码体积变大， 影响代码加载时间和存储空间， 同时也会导致更多指令被加载到指令缓存中， 使得指令缓存命中率下降。 
+
+##### 循环展开
+
+最开始把矩阵乘法展开了一层, 看看效果
+
+```shell
+testing new matrix
+Matrix Addition: 0.002325 seconds
+Matrix Multiplication: 3.848300 seconds
+Matrix Power: 7.677049 seconds
+Matrix Negation: 0.002471 seconds
+Matrix Absolute: 0.002737 seconds
+```
+
+好像效果不咋样TAT， 可能是循环展开影响了指令的局部性
+
+突然发现最开始还是把矩阵乘法顺序写错了。。应该是 ikj 顺序最快(每次算第 i 行 j 列的目标元素， 要算 k 个点积) 但是换个角度来看， 优化空间变大了hhhh 现在就来优化一下循环顺序（循环互换）
+
+我改了一下， 
+
+```c
+    int m = mat1 -> rows;
+    int n = mat1 -> cols;
+    int k = mat2 -> cols;
+    for(int i = 0; i < m; i++)
+    {
+        for(int l = 0; l < n; l++)
+        {
+            double temp = mat1 -> data[i * n + l];
+            for(int j = 0; j < k; j += 2)
+            {
+                result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
+            }
+        }
+    }
+```
+
+这下变快了一点点：
+
+```shell
+testing new matrix
+Matrix Addition: 0.002874 seconds
+Matrix Multiplication: 3.294082 seconds
+Matrix Power: 6.521465 seconds
+Matrix Negation: 0.003110 seconds
+Matrix Absolute: 0.002464 seconds
+```
+
+##### 向量化
+
+
+
+##### 并行计算
+
+接下来捣鼓了一下 OpenMP, 我直接在内部套了个 omp for:
+
+```c
+    for(int i = 0; i < m; i++)
+    {
+        for(int l = 0; l < n; l++)
+        {
+            double temp = mat1 -> data[i * n + l];
+            # pragma omp parallel for
+            for(int j = 0; j < k; j++)
+            {
+                result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
+            }
+        }
+    }
+```
+
+加速效果大概是。。。。。。。。。。。。
+
+```shell
+Matrix Addition: 0.002481 seconds
+Matrix Multiplication: 348.358267 seconds
+```
+
+只能说是灾难。。
+
+后来想明白了， 这样内部循环加 omp 的话， 每一次走到内部循环都启动一个并行区域， 这样开销实在是太大了。 所以 omp 用在外部循环才好。
+
+然后写了下外部循环的 omp:
+
+```c
+    # pragma omp parallel for
+    for(int i = 0; i < m; i++)
+    {
+        for(int l = 0; l < n; l++)
+        {
+            double temp = mat1 -> data[i * n + l];
+            for(int j = 0; j < k; j++)
+            {
+                result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
+            }
+        }
+    }
+```
+
+测了下结果：
+
+``` shell
+testing new matrix
+Matrix Addition: 0.002258 seconds
+Matrix Multiplication: 6.555411 seconds
+Matrix Power: 11.381834 seconds
+Matrix Negation: 0.021555 seconds
+Matrix Absolute: 0.001811 seconds
+```
+
+好吧， 还是负优化了TAT
+

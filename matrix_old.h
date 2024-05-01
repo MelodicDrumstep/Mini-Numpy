@@ -1,5 +1,5 @@
-#ifndef MATRIX_H
-#define MATRIX_H
+#ifndef MATRIX_OLD_H
+#define MATRIX_OLD_H
 
 typedef struct matrix {
     int rows; // number of rows

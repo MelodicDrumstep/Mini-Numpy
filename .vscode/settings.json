@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "x86intrin.h": "c"
+        "x86intrin.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c"
     }
 }

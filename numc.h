@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include <Python.h>
 
 /*
  * Defines the struct that represents the object

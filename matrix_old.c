@@ -167,7 +167,7 @@ void deallocate_matrix(matrix *mat) {
  * Returns the double value of the matrix at the given row and column.
  * You may assume `row` and `col` are valid.
  */
-inline double get(matrix *mat, int row, int col) {
+double get(matrix *mat, int row, int col) {
     return mat -> data[row * mat -> cols + col];
 }
 
@@ -175,7 +175,7 @@ inline double get(matrix *mat, int row, int col) {
  * Sets the value at the given row and column to val. You may assume `row` and
  * `col` are valid
  */
-inline void set(matrix *mat, int row, int col, double val) {
+void set(matrix *mat, int row, int col, double val) {
     mat -> data[row * mat -> cols + col] = val;
 }
 
@@ -239,23 +239,19 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2)
     {
         return -1;
     }
-    fill_matrix(result, 0.0);
-    // C = A * B
-    // A is (m x n)
-    // B is (n x k)
-    // C is (m x k)
     int m = mat1 -> rows;
     int n = mat1 -> cols;
     int k = mat2 -> cols;
     for(int i = 0; i < m; i++)
     {
-        for(int l = 0; l < n; l++)
+        for(int j = 0; j < k; j++)
         {
-            double temp = mat1 -> data[i * n + l];
-            for(int j = 0; j < k; j++)
+            double sum = 0;
+            for(int l = 0; l < n; l++)
             {
-                result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
+                sum += mat1 -> data[i * n + l] * mat2 -> data[l * k + j];
             }
+            result -> data[i * k + j] = sum;
         }
     }
     return 0;
