@@ -505,6 +505,17 @@ static PyNumberMethods Matrix61c_as_number = {
  */
 static PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
+    int row, col;
+    double val;
+    PyArg_ParseTuple(args, "iid", &row, &col, &val);
+    // This is the right way to parse the arguments
+    if(row >= self -> mat -> rows || col >= self -> mat -> cols)
+    {
+        PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+	    return NULL;
+    }
+    set(self -> mat, row, col, val);
+    return Py_BuildValue(""); //This will return None
 }
 
 /*
@@ -514,6 +525,16 @@ static PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
  */
 static PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
+    int row, col;
+    PyArg_ParseTuple(args, "ii", &row, &col);
+    // This is the right way to parse the arguments
+    if(row >= self -> mat -> rows || col >= self -> mat -> cols)
+    {
+        PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+	    return NULL;
+    }
+    double val = get(self -> mat, row, col);
+    return Py_BuildValue("d", val); //This will return the double
 }
 
 /*
@@ -526,6 +547,8 @@ static PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
 // Add method for this class
 static PyMethodDef Matrix61c_methods[] = {
     /* TODO: YOUR CODE HERE */
+    {"get", (PyCFunction)Matrix61c_get_value, METH_VARARGS, "get the value"},
+    {"set", (PyCFunction)Matrix61c_set_value, METH_VARARGS, "set the value"},
     {NULL, NULL, 0, NULL}
 };
 
