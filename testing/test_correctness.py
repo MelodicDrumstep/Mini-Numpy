@@ -4,7 +4,7 @@ Make sure you follow these naming conventions: https://docs.pytest.org/en/reorga
 for your new tests/classes/python files or else they might be skipped.
 """
 from utils import *
-from numc import Matrix
+import numc as nc
 
 """
 For each operation, you should write tests to test correctness on matrices of different sizes.
@@ -12,10 +12,26 @@ Hint: use rand_dp_nc_matrix to generate dumbpy and numc matrices with the same d
       cmp_dp_nc_matrix to compare the results
 """
 
+class TestBasicCorrectness:
+    def test_init(self):
+        # This creates a 3 * 3 matrix with entries all zeros
+        mat1 = nc.Matrix(3, 3)
+
+        # This creates a 2 * 3 matrix with entries all ones
+        mat2 = nc.Matrix(3, 3, 1)
+
+        # This creates a 2 * 3 matrix with first row 1, 2, 3, second row 4, 5, 6
+        mat3 = nc.Matrix([[1, 2, 3], [4, 5, 6]])
+
+        # This creates a 1 * 2 matrix with entries 4, 5
+        mat4 = nc.Matrix(1, 2, [4, 5])
+
+        print("pass basic init")
+
 class TestAddCorrectness:
     def test_small_add(self):
-        # TODO: YOUR CODE HERE
         pass
+
 
     def test_medium_add(self):
         # TODO: YOUR CODE HERE
@@ -99,3 +115,8 @@ class TestSetCorrectness:
     def test_set(self):
         # TODO: YOUR CODE HERE
         pass
+
+if __name__ == '__main__':
+    test = TestBasicCorrectness()
+    test.test_init()
+    print("pass basic init")

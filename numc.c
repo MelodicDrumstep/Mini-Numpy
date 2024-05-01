@@ -312,8 +312,32 @@ static PyMappingMethods Matrix61c_mapping = {
  * You will have to check if the arguments' dimensions match and if the second operand is an
  * instance of Matrix61c, and throw a type error if anything is violated.
  */
-static PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
+static PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) 
+{
     /* TODO: YOUR CODE HERE */
+    Matrix61c * other = (Matrix61c *) args; // cast the args to a Matrix
+    if (!PyObject_TypeCheck(other, &Matrix61cType)) // check if the cast was successful
+    {
+        PyErr_SetString(PyExc_TypeError, "Invalid arguments");
+        return NULL;
+    }
+    matrix * result_matrix = NULL;
+    if(allocate_matrix(&result_matrix, self -> mat -> rows, self -> mat -> cols))
+     // check if the matrix was allocated successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate matrix");
+        return NULL;
+    }
+    if(add_matrix(result_matrix, self -> mat, other -> mat))
+     // check if the matrix was added successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to add matrix");
+        return NULL;
+    }
+    Matrix61c * result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    result -> mat = result_matrix;
+    result -> shape = PyTuple_Pack(2, PyLong_FromLong(result_matrix -> rows), PyLong_FromLong(result_matrix -> cols));
+    return (PyObject *) result;
 }
 
 /*
@@ -324,6 +348,29 @@ static PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
  */
 static PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
+    Matrix61c * other = (Matrix61c *) args; // cast the args to a Matrix
+    if (!PyObject_TypeCheck(other, &Matrix61cType)) // check if the cast was successful
+    {
+        PyErr_SetString(PyExc_TypeError, "Invalid arguments");
+        return NULL;
+    }
+    matrix * result_matrix = NULL;
+    if(allocate_matrix(&result_matrix, self -> mat -> rows, self -> mat -> cols))
+     // check if the matrix was allocated successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate matrix");
+        return NULL;
+    }
+    if(sub_matrix(result_matrix, self -> mat, other -> mat))
+     // check if the matrix was added successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to sub matrix");
+        return NULL;
+    }
+    Matrix61c * result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    result -> mat = result_matrix;
+    result -> shape = PyTuple_Pack(2, PyLong_FromLong(result_matrix -> rows), PyLong_FromLong(result_matrix -> cols));
+    return (PyObject *) result;
 }
 
 /*
@@ -334,6 +381,29 @@ static PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
  */
 static PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
     /* TODO: YOUR CODE HERE */
+    Matrix61c * other = (Matrix61c *) args; // cast the args to a Matrix
+    if (!PyObject_TypeCheck(other, &Matrix61cType)) // check if the cast was successful
+    {
+        PyErr_SetString(PyExc_TypeError, "Invalid arguments");
+        return NULL;
+    }
+    matrix * result_matrix = NULL;
+    if(allocate_matrix(&result_matrix, self -> mat -> rows, self -> mat -> cols))
+     // check if the matrix was allocated successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate matrix");
+        return NULL;
+    }
+    if(mul_matrix(result_matrix, self -> mat, other -> mat))
+     // check if the matrix was added successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to mul matrix");
+        return NULL;
+    }
+    Matrix61c * result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    result -> mat = result_matrix;
+    result -> shape = PyTuple_Pack(2, PyLong_FromLong(result_matrix -> rows), PyLong_FromLong(result_matrix -> cols));
+    return (PyObject *) result;
 }
 
 /*
@@ -341,6 +411,23 @@ static PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
  */
 static PyObject *Matrix61c_neg(Matrix61c* self) {
     /* TODO: YOUR CODE HERE */
+    matrix * result_matrix = NULL;
+    if(allocate_matrix(&result_matrix, self -> mat -> rows, self -> mat -> cols))
+     // check if the matrix was allocated successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate matrix");
+        return NULL;
+    }
+    if(neg_matrix(result_matrix, self -> mat))
+     // check if the matrix was added successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to neg matrix");
+        return NULL;
+    }
+    Matrix61c * result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    result -> mat = result_matrix;
+    result -> shape = PyTuple_Pack(2, PyLong_FromLong(result_matrix -> rows), PyLong_FromLong(result_matrix -> cols));
+    return (PyObject *) result;
 }
 
 /*
@@ -348,6 +435,23 @@ static PyObject *Matrix61c_neg(Matrix61c* self) {
  */
 static PyObject *Matrix61c_abs(Matrix61c *self) {
     /* TODO: YOUR CODE HERE */
+    matrix * result_matrix = NULL;
+    if(allocate_matrix(&result_matrix, self -> mat -> rows, self -> mat -> cols))
+     // check if the matrix was allocated successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate matrix");
+        return NULL;
+    }
+    if(abs_matrix(result_matrix, self -> mat))
+     // check if the matrix was added successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to abs matrix");
+        return NULL;
+    }
+    Matrix61c * result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    result -> mat = result_matrix;
+    result -> shape = PyTuple_Pack(2, PyLong_FromLong(result_matrix -> rows), PyLong_FromLong(result_matrix -> cols));
+    return (PyObject *) result;
 }
 
 /*
@@ -355,6 +459,28 @@ static PyObject *Matrix61c_abs(Matrix61c *self) {
  */
 static PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
     /* TODO: YOUR CODE HERE */
+    int pow_num;
+    PyArg_Parse(pow, "i", &pow_num);
+    //This is the correct way to set pow_num, rather than casting
+    // casting will fail!
+
+    matrix * result_matrix = NULL;
+    if(allocate_matrix(&result_matrix, self -> mat -> rows, self -> mat -> cols))
+     // check if the matrix was allocated successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate matrix");
+        return NULL;
+    }
+    if(pow_matrix(result_matrix, self -> mat, pow_num))
+     // check if the matrix was added successfully
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to pow matrix");
+        return NULL;
+    }
+    Matrix61c * result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    result -> mat = result_matrix;
+    result -> shape = PyTuple_Pack(2, PyLong_FromLong(result_matrix -> rows), PyLong_FromLong(result_matrix -> cols));
+    return (PyObject *) result;
 }
 
 /*
@@ -363,6 +489,12 @@ static PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optiona
  */
 static PyNumberMethods Matrix61c_as_number = {
     /* TODO: YOUR CODE HERE */
+    .nb_add = (binaryfunc)Matrix61c_add,
+    .nb_subtract = (binaryfunc)Matrix61c_sub,
+    .nb_multiply = (binaryfunc)Matrix61c_multiply,
+    .nb_negative = (unaryfunc)Matrix61c_neg,
+    .nb_absolute = (unaryfunc)Matrix61c_abs,
+    .nb_power = (ternaryfunc)Matrix61c_pow,
 };
 
 
@@ -390,33 +522,36 @@ static PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
  * as "set"
  * You might find this link helpful: https://docs.python.org/3.6/c-api/structures.html
  */
+/* INSTANCE METHOD */
+// Add method for this class
 static PyMethodDef Matrix61c_methods[] = {
     /* TODO: YOUR CODE HERE */
     {NULL, NULL, 0, NULL}
 };
 
-/* INSTANCE ATTRIBUTES*/
+// Add member for this class
 static PyMemberDef Matrix61c_members[] = {
     {"shape", T_OBJECT_EX, offsetof(Matrix61c, shape), 0,
      "(rows, cols)"},
     {NULL}  /* Sentinel */
 };
 
+// Define the mapping from python to c
 static PyTypeObject Matrix61cType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "numc.Matrix",
-    .tp_basicsize = sizeof(Matrix61c),
-    .tp_dealloc = (destructor)Matrix61c_dealloc,
-    .tp_repr = (reprfunc)Matrix61c_repr,
-    .tp_as_number = &Matrix61c_as_number,
-    .tp_flags = Py_TPFLAGS_DEFAULT |
-        Py_TPFLAGS_BASETYPE,
-    .tp_doc = "numc.Matrix objects",
-    .tp_methods = Matrix61c_methods,
-    .tp_members = Matrix61c_members,
-    .tp_as_mapping = &Matrix61c_mapping,
-    .tp_init = (initproc)Matrix61c_init,
-    .tp_new = Matrix61c_new
+    .tp_name = "numc.Matrix", // name of the type
+    .tp_basicsize = sizeof(Matrix61c), // size of the object
+    .tp_dealloc = (destructor)Matrix61c_dealloc, // destructor
+    .tp_repr = (reprfunc)Matrix61c_repr, // __repr__ function
+    .tp_as_number = &Matrix61c_as_number, // number methods
+    .tp_flags = Py_TPFLAGS_DEFAULT | 
+        Py_TPFLAGS_BASETYPE,    // flags
+    .tp_doc = "numc.Matrix objects", // docstring
+    .tp_methods = Matrix61c_methods, // methods, defined above
+    .tp_members = Matrix61c_members, // members, defined above 
+    .tp_as_mapping = &Matrix61c_mapping, // mapping methods
+    .tp_init = (initproc)Matrix61c_init, // __init__ function， initialize with arguments
+    .tp_new = Matrix61c_new // __new__ function, basic initialization
 };
 
 

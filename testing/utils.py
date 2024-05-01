@@ -1,128 +1,121 @@
-from utils import *
-from unittest import TestCase
+"""
+This file contains some helper functions for testing
+Provided by CS 61C staff
+"""
+
+import numc as nc
+import numpy as np
+import hashlib, struct
+from typing import Union, List
+import operator
+import time
 
 """
-For each operation, you should write tests to test  on matrices of different sizes.
-Hint: use dp_mc_matrix to generate dumbpy and numc matrices with the same data and use
-      cmp_dp_nc_matrix to compare the results
+Global vars
 """
-class TestAdd(TestCase):
-    def test_small_add(self):
-        # TODO: YOUR CODE HERE
-        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
-        dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
-        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
-        self.assertTrue(is_correct)
-        print_speedup(speed_up)
+num_samples = 1000
+decimal_places = 6
+func_mapping = {
+    "add": operator.add,
+    "sub": operator.sub,
+    "mul": operator.mul,
+    "neg": operator.neg,
+    "abs": operator.abs,
+    "pow": operator.pow
+}
+"""
+Returns a dumbpy matrix and a numc matrix with the same data
+"""
+def dp_nc_matrix(*args, **kwargs):
+    if len(kwargs) > 0:
+        return dp.Matrix(*args, **kwargs), nc.Matrix(*args, **kwargs)
+    else:
+        return dp.Matrix(*args), nc.Matrix(*args)
 
-    def test_medium_add(self):
-        # TODO: YOUR CODE HERE
-        pass
+"""
+Returns a random dumbpy matrix and a random numc matrix with the same data
+seed, low, and high are optional
+"""
+def rand_dp_nc_matrix(rows, cols, seed=0):
+    return dp.Matrix(rows, cols, rand=True, seed=seed), nc.Matrix(rows, cols, rand=True, seed=seed)
 
-    def test_large_add(self):
-        # TODO: YOUR CODE HERE
-        pass
 
-class TestSub(TestCase):
-    def test_small_sub(self):
-        # TODO: YOUR CODE HERE
-        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
-        dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
-        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
-        self.assertTrue(is_correct)
-        print_speedup(speed_up)
+"""
+Returns whether the given dumbpy matrix dp_mat is equal to the numc matrix nc_mat
+This function allows a reasonable margin of( floating point errors
+"""
+def cmp_dp_nc_matrix(dp_mat: dp.Matrix, nc_mat: nc.Matrix):
+    return rand_md5(dp_mat) == rand_md5(nc_mat)
 
-    def test_medium_sub(self):
-        # TODO: YOUR CODE HERE
-        pass
+"""
+Test if numc returns the correct result given an operation and some matrices.
+If speed_up is set to True, returns the speedup as well
+"""
+def compute(dp_mat_lst: List[Union[dp.Matrix, int]],
+    nc_mat_lst: List[Union[nc.Matrix, int]], op: str):
+    f = func_mapping[op]
+    nc_start, nc_end, dp_start, dp_end = None, None, None, None
+    nc_result, dp_result = None, None
+    assert(op in list(func_mapping.keys()))
+    if op == "neg" or op == "abs":
+        assert(len(dp_mat_lst) == 1)
+        assert(len(nc_mat_lst) == 1)
+        nc_start = time.time()
+        nc_result = f(nc_mat_lst[0])
+        nc_end = time.time()
 
-    def test_large_sub(self):
-        # TODO: YOUR CODE HERE
-        pass
+        dp_start = time.time()
+        dp_result = f(dp_mat_lst[0])
+        dp_end = time.time()
+    else:
+        assert(len(dp_mat_lst) > 1)
+        assert(len(nc_mat_lst) > 1)
+        nc_start = time.time()
+        nc_result = nc_mat_lst[0]
+        for mat in nc_mat_lst[1:]:
+            nc_result = f(nc_result, mat)
+        nc_end = time.time()
 
-class TestAbs(TestCase):
-    def test_small_abs(self):
-        # TODO: YOUR CODE HERE
-        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")
-        self.assertTrue(is_correct)
-        print_speedup(speed_up)
+        dp_start = time.time()
+        dp_result = dp_mat_lst[0]
+        for mat in dp_mat_lst[1:]:
+            dp_result = f(dp_result, mat)
+        dp_end = time.time()
+    # Check for correctness
+    is_correct = cmp_dp_nc_matrix(nc_result, dp_result)
+    return is_correct, (dp_end - dp_start) / (nc_end - nc_start)
 
-    def test_medium_abs(self):
-        # TODO: YOUR CODE HERE
-        pass
+"""
+Print speedup
+"""
+def print_speedup(speed_up):
+    print("Speed up is:", speed_up)
 
-    def test_large_abs(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-class TestNeg(TestCase):
-    def test_small_neg(self):
-        # TODO: YOUR CODE HERE
-        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
-        self.assertTrue(is_correct)
-        print_speedup(speed_up)
-    def test_medium_neg(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-    def test_large_neg(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-class TestMul(TestCase):
-    def test_small_mul(self):
-        # TODO: YOUR CODE HERE
-        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
-        dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
-        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
-        self.assertTrue(is_correct)
-        print_speedup(speed_up)
-
-    def test_medium_mul(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-    def test_large_mul(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-class TestPow(TestCase):
-    def test_small_pow(self):
-        # TODO: YOUR CODE HERE
-        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        is_correct, speed_up = compute([dp_mat, 3], [nc_mat, 3], "pow")
-        self.assertTrue(is_correct)
-        print_speedup(speed_up)
-
-    def test_medium_pow(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-    def test_large_pow(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-class TestGet(TestCase):
-    def test_get(self):
-        # TODO: YOUR CODE HERE
-        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        rand_row = np.random.randint(dp_mat.shape[0])
-        rand_col = np.random.randint(dp_mat.shape[1])
-        self.assertEqual(round(dp_mat[rand_row][rand_col], decimal_places),
-            round(nc_mat[rand_row][rand_col], decimal_places))
-
-class TestSet(TestCase):
-    def test_set(self):
-        # TODO: YOUR CODE HERE
-        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        rand_row = np.random.randint(dp_mat.shape[0])
-        rand_col = np.random.randint(dp_mat.shape[1])
-        self.assertEquals(round(dp_mat[rand_row][rand_col], decimal_places),
-            round(nc_mat[rand_row][rand_col], decimal_places))
-
-class TestShape(TestCase):
-    def test_shape(self):
-        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        self.assertTrue(dp_mat.shape == nc_mat.shape)
+"""
+Generate a md5 hash by sampling random elements in nc_mat
+"""
+def rand_md5(mat: Union[dp.Matrix, nc.Matrix]):
+    np.random.seed(1)
+    m = hashlib.md5()
+    if len(mat.shape) > 1:
+        rows, cols = mat.shape
+        total_cnt = mat.shape[0] * mat.shape[1]
+        if total_cnt < num_samples:
+            for i in range(rows):
+                for j in range(cols):
+                    m.update(struct.pack("f", round(mat[i][j], decimal_places)))
+        else:
+            for _ in range(num_samples):
+                i = np.random.randint(rows)
+                j = np.random.randint(cols)
+                m.update(struct.pack("f", round(mat[i][j], decimal_places)))
+    else:
+        total_cnt = mat.shape[0]
+        if total_cnt < num_samples:
+            for i in range(total_cnt):
+                m.update(struct.pack("f", round(mat[i], decimal_places)))
+        else:
+            for _ in range(num_samples):
+                i = np.random.randint(total_cnt)
+                m.update(struct.pack("f", round(mat[i], decimal_places)))
+    return m.digest()

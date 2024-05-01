@@ -13,6 +13,7 @@
 #endif
 
 //#define DEBUG
+#define DEBUG2
 
 /* Below are some intel intrinsics that might be useful
  * void _mm256_storeu_pd (double * mem_addr, __m256d a)
@@ -57,11 +58,25 @@ int allocate_matrix(matrix **mat, int rows, int cols)
 {
     if(rows < 1 || cols < 1)
     {
+
+        // DEBUG
+        #ifdef DEBUG2
+        printf("rows or cols is less than 1\n");
+        #endif
+        // DEBUG
+
         return -1;
     }
     *mat = (matrix *)malloc(sizeof(matrix));
     if(*mat == NULL)
     {
+  
+        // DEBUG
+        #ifdef DEBUG2
+        printf("mat is NULL\n");
+        #endif
+        // DEBUG
+
         return -1;
     }
     (*mat) -> rows = rows;
@@ -73,6 +88,13 @@ int allocate_matrix(matrix **mat, int rows, int cols)
     {
         free(*mat);  // Free the allocated matrix struct if data allocation fails
         *mat = NULL;
+
+        // DEBUG
+        #ifdef DEBUG2
+        printf("data is NULL\n");
+        #endif
+        // DEBUG
+
         return -1;
     }
     for(int i = 0; i < rows * cols; i++)
@@ -175,6 +197,13 @@ void fill_matrix(matrix *mat, double val) {
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     if(result -> rows != mat1 -> rows || result -> cols != mat1 -> cols || result -> rows != mat2 -> rows || result -> cols != mat2 -> cols)
     {
+
+        //DEBUG
+        #ifdef DEBUG2
+        printf("fail");
+        #endif 
+        //DEBUG
+
         return -1;
     }
     for(int i = 0; i < mat1 -> rows * mat1 -> cols; i++)
