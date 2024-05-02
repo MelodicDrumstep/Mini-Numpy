@@ -1,6 +1,9 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+#ifndef MATRIX
+#define MATRIX
+
 typedef struct matrix {
     int rows; // number of rows
     int cols; // number of columns
@@ -8,6 +11,7 @@ typedef struct matrix {
     int ref_cnt; // How many slices/matrices are referring to this matrix's data
     struct matrix *parent; // NULL if matrix is not a slice, else the parent matrix of the slice
 } matrix;
+#endif
 
 double rand_double(double low, double high);
 void rand_matrix(matrix *result, unsigned int seed, double low, double high);

@@ -1,124 +1,216 @@
-#include "matrix.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include "matrix.h"
+#include "matrix_old.h"
+#include "math.h"
 
-// Function to print a matrix
-void print_matrix(matrix *mat) {
-    for (int i = 0; i < mat->rows; i++) {
-        for (int j = 0; j < mat->cols; j++) {
-            printf("%lf ", get(mat, i, j));
-        }
-        printf("\n");
+// 生成随机矩阵
+void generate_random_matrix(matrix *mat, int rows, int cols) {
+    mat->rows = rows;
+    mat->cols = cols;
+    mat->data = (double *)malloc(rows * cols * sizeof(double));
+    for (int i = 0; i < rows * cols; i++) {
+        mat->data[i] = (double)rand() / RAND_MAX * 100;  // 生成0到100之间的随机数
     }
 }
 
-// Function to compare two matrices
+void generate_zero_matrix(matrix *mat, int rows, int cols) {
+    mat->rows = rows;
+    mat->cols = cols;
+    mat->data = (double *)calloc(rows * cols, sizeof(double));  // 使用calloc保证初始化为0
+}
+
+
+// 比较两个矩阵是否相等，并打印不一致的元素
 int compare_matrices(matrix *mat1, matrix *mat2) {
+    int equal = 1;
     if (mat1->rows != mat2->rows || mat1->cols != mat2->cols) {
-        return 0; // Matrices have different dimensions
+        printf("Matrix dimensions mismatch.\n");
+        return 0;
     }
     for (int i = 0; i < mat1->rows; i++) {
         for (int j = 0; j < mat1->cols; j++) {
-            if (get(mat1, i, j) != get(mat2, i, j)) {
-                return 0; // Matrices are not equal
+            double val1 = mat1->data[i * mat1->cols + j];
+            double val2 = mat2->data[i * mat2->cols + j];
+            if (fabs(val1 - val2) > 0.00001) {  // 使用适当的容差
+                printf("Mismatch at row %d, col %d: %f != %f\n", i, j, val1, val2);
+                equal = 0;
             }
         }
     }
-    return 1; // Matrices are equal
+    return equal;
+}
+
+// 测试矩阵加法
+void test_addition() {
+    matrix mat1, mat2, result1, result2;
+    generate_random_matrix(&mat1, 100, 100);
+    generate_random_matrix(&mat2, 100, 100);
+    generate_random_matrix(&result1, 100, 100); // 初始分配结果矩阵
+    generate_random_matrix(&result2, 100, 100); // 初始分配结果矩阵
+
+    add_matrix(&result1, &mat1, &mat2);
+    add_matrix_old(&result2, &mat1, &mat2);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Addition test passed.\n");
+    } else {
+        printf("Addition test failed.\n");
+    }
+
+    free(mat1.data);
+    free(mat2.data);
+    free(result1.data);
+    free(result2.data);
+}
+
+// 测试填充矩阵函数
+void test_fill_matrix() {
+    matrix mat1, result1, result2;
+    generate_random_matrix(&mat1, 100, 100);
+    generate_random_matrix(&result1, 100, 100); // 创建结果矩阵
+    generate_random_matrix(&result2, 100, 100); // 创建结果矩阵
+
+    fill_matrix(&result1, 5.5);
+    fill_matrix_old(&result2, 5.5);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Fill matrix test passed.\n");
+    } else {
+        printf("Fill matrix test failed.\n");
+    }
+
+    free(mat1.data);
+    free(result1.data);
+    free(result2.data);
+}
+
+// 测试矩阵减法
+void test_subtraction() {
+    matrix mat1, mat2, result1, result2;
+    generate_random_matrix(&mat1, 100, 100);
+    generate_random_matrix(&mat2, 100, 100);
+    generate_random_matrix(&result1, 100, 100); // 创建结果矩阵
+    generate_random_matrix(&result2, 100, 100); // 创建结果矩阵
+
+    sub_matrix(&result1, &mat1, &mat2);
+    sub_matrix_old(&result2, &mat1, &mat2);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Subtraction test passed.\n");
+    } else {
+        printf("Subtraction test failed.\n");
+    }
+
+    free(mat1.data);
+    free(mat2.data);
+    free(result1.data);
+    free(result2.data);
+}
+
+// 测试矩阵元素取绝对值
+void test_abs() {
+    matrix mat1, result1, result2;
+    generate_random_matrix(&mat1, 100, 100);
+    generate_zero_matrix(&result1, 100, 100); // 创建结果矩阵
+    generate_zero_matrix(&result2, 100, 100); // 创建结果矩阵
+
+    abs_matrix(&result1, &mat1);
+    abs_matrix_old(&result2, &mat1);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Absolute value test passed.\n");
+    } else {
+        printf("Absolute value test failed.\n");
+    }
+
+    // for(int i = 0; i < 100; i++) {
+    //     for(int j = 0; j < 100; j++) {
+    //         printf("i = %d, j = %d, result1 = %f, result2 = %f\n", i, j, result1.data[i * 100 + j], result2.data[i * 100 + j]);
+    //     }
+    // }
+
+    free(mat1.data);
+    free(result1.data);
+    free(result2.data);
+}
+
+// 测试矩阵取负
+void test_negation() {
+    matrix mat, result1, result2;
+    generate_random_matrix(&mat, 100, 100);
+    generate_random_matrix(&result1, 100, 100); // 创建结果矩阵
+    generate_random_matrix(&result2, 100, 100); // 创建结果矩阵
+
+    neg_matrix(&result1, &mat);
+    neg_matrix_old(&result2, &mat);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Negation test passed.\n");
+    } else {
+        printf("Negation test failed.\n");
+    }
+
+    free(mat.data);
+    free(result1.data);
+    free(result2.data);
+}
+
+// 测试矩阵乘法
+void test_multiplication() {
+    matrix mat1, mat2, result1, result2;
+    generate_random_matrix(&mat1, 100, 100);
+    generate_random_matrix(&mat2, 100, 100);
+    generate_random_matrix(&result1, 100, 100); // 创建结果矩阵
+    generate_random_matrix(&result2, 100, 100); // 创建结果矩阵
+
+    mul_matrix(&result1, &mat1, &mat2);
+    mul_matrix_old(&result2, &mat1, &mat2);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Multiplication test passed.\n");
+    } else {
+        printf("Multiplication test failed.\n");
+    }
+
+    free(mat1.data);
+    free(mat2.data);
+    free(result1.data);
+    free(result2.data);
+}
+
+// 测试矩阵求幂
+void test_power() {
+    matrix mat, result1, result2;
+    int power = 3;  // 测试幂为3的情况
+    generate_random_matrix(&mat, 100, 100);
+    generate_random_matrix(&result1, 100, 100); // 创建结果矩阵
+    generate_random_matrix(&result2, 100, 100); // 创建结果矩阵
+
+    pow_matrix(&result1, &mat, power);
+    pow_matrix_old(&result2, &mat, power);
+
+    if (compare_matrices(&result1, &result2)) {
+        printf("Power test passed.\n");
+    } else {
+        printf("Power test failed.\n");
+    }
+
+    free(mat.data);
+    free(result1.data);
+    free(result2.data);
 }
 
 int main() {
-    matrix *mat1, *mat2, *result;
-    int rows = 3, cols = 3;
+    srand(time(NULL));  // 设置随机种子
 
-    // Test allocate_matrix
-    printf("Testing allocate_matrix...\n");
-    if (allocate_matrix(&mat1, rows, cols) == 0) {
-        printf("allocate_matrix: Success\n");
-    } else {
-        printf("allocate_matrix: Failed\n");
-        return 1;
-    }
-
-    // Test rand_matrix
-    printf("\nTesting rand_matrix...\n");
-    rand_matrix(mat1, 42, 0.0, 1.0);
-    print_matrix(mat1);
-
-    // Test add_matrix
-    printf("\nTesting add_matrix...\n");
-    allocate_matrix(&mat2, rows, cols);
-    rand_matrix(mat2, 24, 0.0, 1.0);
-    allocate_matrix(&result, rows, cols);
-    if (add_matrix(result, mat1, mat2) == 0) {
-        printf("add_matrix: Success\n");
-        print_matrix(result);
-    } else {
-        printf("add_matrix: Failed\n");
-    }
-
-    // Test sub_matrix
-    printf("\nTesting sub_matrix...\n");
-    if (sub_matrix(result, mat1, mat2) == 0) {
-        printf("sub_matrix: Success\n");
-        print_matrix(result);
-    } else {
-        printf("sub_matrix: Failed\n");
-    }
-
-    // Test mul_matrix
-    printf("\nTesting mul_matrix...\n");
-    matrix *mat3, *mat4;
-    allocate_matrix(&mat3, 3, 2);
-    allocate_matrix(&mat4, 2, 3);
-    rand_matrix(mat3, 15, 0.0, 1.0);
-    rand_matrix(mat4, 36, 0.0, 1.0);
-    allocate_matrix(&result, 3, 3);
-    if (mul_matrix(result, mat3, mat4) == 0) {
-        printf("mul_matrix: Success\n");
-        print_matrix(result);
-    } else {
-        printf("mul_matrix: Failed\n");
-    }
-
-    // Test pow_matrix
-    printf("\nTesting pow_matrix...\n");
-    matrix *square_mat;
-    allocate_matrix(&square_mat, 3, 3);
-    rand_matrix(square_mat, 10, 0.0, 1.0);
-    allocate_matrix(&result, 3, 3);
-    if (pow_matrix(result, square_mat, 2) == 0) {
-        printf("pow_matrix: Success\n");
-        print_matrix(result);
-    } else {
-        printf("pow_matrix: Failed\n");
-    }
-
-    // Test neg_matrix
-    printf("\nTesting neg_matrix...\n");
-    if (neg_matrix(result, mat1) == 0) {
-        printf("neg_matrix: Success\n");
-        print_matrix(result);
-    } else {
-        printf("neg_matrix: Failed\n");
-    }
-
-    // Test abs_matrix
-    printf("\nTesting abs_matrix...\n");
-    if (abs_matrix(result, mat1) == 0) {
-        printf("abs_matrix: Success\n");
-        print_matrix(result);
-    } else {
-        printf("abs_matrix: Failed\n");
-    }
-
-    // Test deallocate_matrix
-    printf("\nTesting deallocate_matrix...\n");
-    deallocate_matrix(mat1);
-    deallocate_matrix(mat2);
-    deallocate_matrix(mat3);
-    deallocate_matrix(mat4);
-    deallocate_matrix(square_mat);
-    deallocate_matrix(result);
-
+    test_addition();      // 测试加法
+    test_subtraction();   // 测试减法
+    test_abs();           // 测试取绝对值
+    test_fill_matrix();   // 测试填充矩阵
+    test_negation();      // 测试取负
+    test_multiplication(); // 测试乘法
+    test_power();         // 测试求幂
     return 0;
 }

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
+#include <math.h>
 
 // Include SSE intrinsics
 #if defined(_MSC_VER)
@@ -189,7 +190,10 @@ void fill_matrix(matrix *mat, double val)
     __m256d avx_register = _mm256_set_pd(val, val, val, val);
     // set the avx_register with 4 val
     //#pragma omp parallel for
-    for(int i = 0; i < mat -> rows * mat -> cols / 32; i += 8)
+    int num_element = mat -> rows * mat -> cols;
+    int max_index = num_element / 32 * 32;
+
+    for(int i = 0; i < max_index / 4; i += 8)
     {
         _mm256_storeu_pd(mat -> data + i * 4, avx_register);
         // store the avx_register to the data
@@ -202,7 +206,7 @@ void fill_matrix(matrix *mat, double val)
         _mm256_storeu_pd(mat -> data + (i + 7) * 4, avx_register);
     }   
 
-    for(int i = mat -> rows * mat -> cols / 4 * 4; i < mat -> rows * mat -> cols; i++)
+    for(int i = max_index; i < num_element; i++)
     {
         // For the remaining part
         // use regular way to set the value
@@ -231,7 +235,11 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create avx_registers
 
     //#pragma omp parallel for
-    for(int i = 0; i < mat1 -> rows * mat1 -> cols / 64; i += 16)
+
+    int num_element = mat1 -> rows * mat1 -> cols;
+    int max_index = num_element / 8 * 8;
+
+    for(int i = 0; i < max_index / 4; i += 2)
     {
         avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
         // load the data from mat1
@@ -240,97 +248,13 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         _mm256_storeu_pd(result -> data + i * 4, avx_result);
         // store the avx_register to the data
 
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+        avx_register1 = _mm256_loadu_pd(mat1 -> data + (i + 1) * 4);
+        avx_register2 = _mm256_loadu_pd(mat2 -> data + (i + 1) * 4);
         avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
+        _mm256_storeu_pd(result -> data + (i + 1) * 4, avx_result);
 
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_add_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
     }
-    for(int i = mat1 -> rows * mat1 -> cols / 4 * 4; i < mat1 -> rows * mat1 -> cols; i++)
+    for(int i = max_index; i < num_element; i++)
     {
         // For the remaining part
         // use regular way to set the value
@@ -354,7 +278,11 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create avx_registers
 
     //#pragma omp parallel for
-    for(int i = 0; i < mat1 -> rows * mat1 -> cols / 64; i += 16)
+
+    int num_element = mat1 -> rows * mat1 -> cols;
+    int max_index = num_element / 16 * 16;
+
+    for(int i = 0; i < max_index / 4; i += 4)
     {
         avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
         // load the data from mat1
@@ -363,101 +291,27 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         _mm256_storeu_pd(result -> data + i * 4, avx_result);
         // store the avx_register to the data
 
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+        avx_register1 = _mm256_loadu_pd(mat1 -> data + (i + 1) * 4);
+        avx_register2 = _mm256_loadu_pd(mat2 -> data + (i + 1) * 4);
         avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
+        _mm256_storeu_pd(result -> data + (i + 1) * 4, avx_result);
 
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+        avx_register1 = _mm256_loadu_pd(mat1 -> data + (i + 2) * 4);
+        avx_register2 = _mm256_loadu_pd(mat2 -> data + (i + 2) * 4);
         avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
+        _mm256_storeu_pd(result -> data + (i + 2) * 4, avx_result);
 
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+        avx_register1 = _mm256_loadu_pd(mat1 -> data + (i + 3) * 4);
+        avx_register2 = _mm256_loadu_pd(mat2 -> data + (i + 3) * 4);
         avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
+        _mm256_storeu_pd(result -> data + (i + 3) * 4, avx_result);
 
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
-        avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_register1, avx_register2);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
     }
-    for(int i = mat1 -> rows * mat1 -> cols / 4 * 4; i < mat1 -> rows * mat1 -> cols; i++)
+    for(int i = max_index; i < num_element; i++)
     {
         // For the remaining part
         // use regular way to set the value
-        result -> data[i] = mat1 -> data[i] + mat2 -> data[i];
+        result -> data[i] = mat1 -> data[i] - mat2 -> data[i];
     }
     return 0;
 }
@@ -510,106 +364,21 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2)
             __m256d avx_resister1 = _mm256_set1_pd(temp);
             __m256d avx_resister2;
             __m256d avx_resister3;
-            for(int j = 0; j < k / 64; j += 16)
+            int max_index = k / 8 * 8;
+
+            for(int j = 0; j < max_index / 4; j += 2)
             {
                 avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
                 //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
                 avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
                 _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-                
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
 
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
+                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + (j + 1) * 4);
                 avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-            
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-                
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-            
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-                j++;
-                avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-                //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-                avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-                _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
+                _mm256_storeu_pd(result -> data + i * k + (j + 1) * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + (j + 1) * 4), avx_resister3));
             }
 
-            for(int j = k / 4 * 4; j < k; j++)
+            for(int j = max_index; j < k; j++)
             {
                 result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
             }
@@ -706,7 +475,11 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
             mul_matrix(temp3, result, temp);
 
             __m256d avx_register;
-            for(int i = 0; i < mat -> rows * mat -> cols / 64; i += 16)
+
+            int num_element = mat -> rows * mat -> cols;
+            int max_index = num_element / 16 * 16;
+
+            for(int i = 0; i < max_index / 4;)
             {
                 avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
                 _mm256_storeu_pd(result -> data + i * 4, avx_register);
@@ -719,46 +492,13 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
                 i++;
                 avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
                 _mm256_storeu_pd(result -> data + i * 4, avx_register);
-
                 i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
-                i++;
-                avx_register = _mm256_loadu_pd(temp3 -> data + i * 4);
-                _mm256_storeu_pd(result -> data + i * 4, avx_register);
             }
+            for(int i = max_index; i < num_element; i++)
+            {
+                result -> data[i] = temp3 -> data[i];
+            }
+
             deallocate_matrix(temp3);
 
             #ifdef DEBUG 
@@ -811,9 +551,12 @@ int neg_matrix(matrix *result, matrix *mat) {
     __m256d avx_zero = _mm256_setzero_pd();
     __m256d avx_result;
     //#pragma omp parallel for
-    for(int i = 0; i < mat -> rows * mat -> cols / 64; i += 16)
+
+    int num_element = mat -> rows * mat -> cols;
+    int max_index = num_element / 16 * 16;
+
+    for(int i = 0; i < max_index / 4;)
     {
-
         avx_register = _mm256_loadu_pd(mat -> data + i * 4);
         avx_result = _mm256_sub_pd(avx_zero, avx_register);
         _mm256_storeu_pd(result -> data + i * 4, avx_result);
@@ -834,67 +577,9 @@ int neg_matrix(matrix *result, matrix *mat) {
         _mm256_storeu_pd(result -> data + i * 4, avx_result);
 
         i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        avx_result = _mm256_sub_pd(avx_zero, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, avx_result);
     }
 
-    for(int i = mat -> rows * mat -> cols / 4 * 4; i < mat -> rows * mat -> cols; i++)
+    for(int i = max_index; i < num_element; i++)
     {
         result -> data[i] = -mat -> data[i];
     }
@@ -905,7 +590,8 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Store the result of taking the absolute value element-wise to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int abs_matrix(matrix *result, matrix *mat) {
+int abs_matrix(matrix *result, matrix *mat) 
+{
     if(result -> rows != mat -> rows || result -> cols != mat -> cols)
     {
         return -1;
@@ -914,7 +600,11 @@ int abs_matrix(matrix *result, matrix *mat) {
     __m256d sign_mask;
     __m256d abs_vec;
     //#pragma omp parallel for
-    for(int i = 0; i < mat -> rows * mat -> cols / 64; i += 8)
+
+    int num_element = mat -> rows * mat -> cols;
+    int max_index = num_element / 16 * 16;
+
+    for(int i = 0; i < max_index / 4;)
     {
         avx_register = _mm256_loadu_pd(mat -> data + i * 4);
         sign_mask = _mm256_set1_pd(-0.0);
@@ -928,102 +618,30 @@ int abs_matrix(matrix *result, matrix *mat) {
         //Notice here!!! Do not use _mm256_store_pd
         //_mm256_store_pd need the data to be aligned in memory
         // But here I cannot ganrantee that
-
         i++;
+
         avx_register = _mm256_loadu_pd(mat -> data + i * 4);
         sign_mask = _mm256_set1_pd(-0.0);
         abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
         _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
         i++;
+
         avx_register = _mm256_loadu_pd(mat -> data + i * 4);
         sign_mask = _mm256_set1_pd(-0.0);
         abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
         _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
         i++;
+
         avx_register = _mm256_loadu_pd(mat -> data + i * 4);
         sign_mask = _mm256_set1_pd(-0.0);
         abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
         _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
         i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-                i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-
-        i++;
-        avx_register = _mm256_loadu_pd(mat -> data + i * 4);
-        sign_mask = _mm256_set1_pd(-0.0);
-        abs_vec = _mm256_andnot_pd(sign_mask, avx_register);
-        _mm256_storeu_pd(result -> data + i * 4, abs_vec);
-        
     }
 
-    for(int i = mat -> rows * mat -> cols / 4 * 4; i < mat -> rows * mat -> cols; i++)
+    for(int i = max_index; i < num_element; i++)
     {
-        result -> data[i] = abs(mat -> data[i]);
+        result -> data[i] = fabs(mat -> data[i]);
     }
     return 0;
 }

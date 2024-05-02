@@ -526,6 +526,37 @@ Matrix Addition: 0.002880 seconds
     return 0;
 ```
 
+可以更加模块化一点写成这样， 方便之后循环展开修改：
+
+```c
+__m256d avx_register1;
+__m256d avx_register2;
+__m256d avx_result;
+// create avx_registers
+
+//#pragma omp parallel for
+
+int num_element = mat1 -> rows * mat1 -> cols;
+int max_index = num_element / 4 * 4;
+
+for(int i = 0; i < max_index / 4; i++)
+{
+    avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
+    // load the data from mat1
+    avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+    avx_result = _mm256_add_pd(avx_register1, avx_register2);
+    _mm256_storeu_pd(result -> data + i * 4, avx_result);
+    // store the avx_register to the data
+}
+for(int i = max_index; i < num_element; i++)
+{
+    // For the remaining part
+    // use regular way to set the value
+    result -> data[i] = mat1 -> data[i] + mat2 -> data[i];
+}
+return 0;
+```
+
 看下效果：
 
 ``` shell
@@ -634,12 +665,111 @@ Matrix Negation: 0.000832 seconds
 Matrix Absolute: 0.001282 seconds
 ```
 
+##### 向量化 + 循环展开
+
+###### 矩阵加法
+
+先来展开一下矩阵加法， 我的测试正确性的 .cpp 文件在 /testing/usertest.c 里。
+
+首先先展开一层：
+
+```c
+int num_element = mat1 -> rows * mat1 -> cols;
+int max_index = num_element / 8;
+
+for(int i = 0; i < max_index; i += 2)
+{
+    avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
+    // load the data from mat1
+    avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+    avx_result = _mm256_add_pd(avx_register1, avx_register2);
+    _mm256_storeu_pd(result -> data + i * 4, avx_result);
+    // store the avx_register to the data
+
+    avx_register1 = _mm256_loadu_pd(mat1 -> data + (i + 1) * 4);
+    // load the data from mat1
+    avx_register2 = _mm256_loadu_pd(mat2 -> data + (i + 1) * 4);
+    avx_result = _mm256_add_pd(avx_register1, avx_register2);
+    _mm256_storeu_pd(result -> data + (i + 1) * 4, avx_result);
+}
+for(int i = max_index; i < num_element; i++)
+{
+    // For the remaining part
+    // use regular way to set the value
+    result -> data[i] = mat1 -> data[i] + mat2 -> data[i];
+}
+```
+
+这里要注意 i 每次变化多少， 以及最后剩余的部分还有多少。 最好是先定义好这样的 num_element 和 max_index， 免得有时候忘记改 max_index 那个东西了。
+
+看下效果：
+
+```shell
+This is -O3 Optimization
+Matrix Addition: 0.001031 seconds
+testing new matrix
+Matrix Addition: 0.003074 seconds
+```
+
+已经很接近 -O3 了。 
+
+现在我有一个疑问：要不要把 i++ 打进去？ 比如， 我写成
+
+``` c
+for(int i = 0; i < max_index;)
+{
+    avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
+    // load the data from mat1
+    avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+    avx_result = _mm256_add_pd(avx_register1, avx_register2);
+    _mm256_storeu_pd(result -> data + i * 4, avx_result);
+    // store the avx_register to the data
+
+    i++;
+
+    avx_register1 = _mm256_loadu_pd(mat1 -> data + i * 4);
+    // load the data from mat1
+    avx_register2 = _mm256_loadu_pd(mat2 -> data + i * 4);
+    avx_result = _mm256_add_pd(avx_register1, avx_register2);
+    _mm256_storeu_pd(result -> data + i * 4, avx_result);
+
+    i++;
+}
+```
+
+这样的话正确性是没问题， 如果打进去， 那我每次不用重复算 i + 1 的值了， 但是 store 到 i 这个命令也要 store 两次（原先是一次）
+
+话不多说， 先看下效果：
+
+```shell
+This is -O3 Optimization
+Matrix Addition: 0.001181 seconds
+testing new matrix
+Matrix Addition: 0.002503 seconds
+```
+
+OK， 现在是比没把 i++ 打进去的版本要快。 说明此时为了不重复计算 i++， 宁愿多一次 store 指令。
+
+下面继续展开试试，列出了一个表格
+
+```
+展开层数    没有把 i++ 打进循环的测试时间     把 i++ 打进循环的测试时间
+1               0.003074                    0.002503
+2               0.001862                    0.002339
+3               0.002067                    0.001973
+```
+
+所以最快的是， 展开 2 层并不把 i++ 打进循环。
+
+
 ###### 矩阵乘法
 
 假设是 C = A x B, 
 
 A is m x n
+
 B is n x k
+
 C is m x k
 
 我先直接把原来的写法向量化， 原来是：
@@ -682,24 +812,6 @@ for(int l = 0; l < n; l++)
 }
 ```
 
-现在效果已经超级好了：
-
-
-```shell
-testing old matrix
-Matrix Addition: 0.001646 seconds
-Matrix Multiplication: 2.865686 seconds
-Matrix Power: 4.822018 seconds
-Matrix Negation: 0.001488 seconds
-Matrix Absolute: 0.002532 seconds
-testing new matrix
-Matrix Addition: 0.001476 seconds
-Matrix Multiplication: 1.081471 seconds
-Matrix Power: 2.193136 seconds
-Matrix Negation: 0.001151 seconds
-Matrix Absolute: 0.001254 seconds
-```
-
 我们来看看 -O3 的情况（每次机子的状况都不太一样， 所以不好直接用之前的结果）
 
 ```shell
@@ -711,18 +823,24 @@ Matrix Negation: 0.000474 seconds
 Matrix Absolute: 0.000408 seconds
 ```
 
-根据和 -O3 的差距已经很小了， 甚至矩阵加法已经比 -O3 要快了。
-
 对于矩阵乘法，还有一种思路是， 我循环顺序采用 mkn， 但是先把 B 转置。
 
 为什么想到转置 B？ 首先， 矩阵乘法再怎么样也是 $O(n^3)$ 的（不考虑那个奇奇怪怪的分治算法， 那个算法本身常数太大了效果也不好， 工业界用的应该都是 $O(n^3)$的）， 而转置是 $O(n^2)$ 的， $n$ 很大的时候转置所需时间可以忽略。其次， 我如果横着扫描 $A$， 那就必定竖着扫描 $B$， 这时我把 B 转置的话， 我就是横着扫描 $B^T$。
 
 这种做法我简单试了一下， 效果远不如之前的 mnk 顺序 + avx 向量化要好。
 
-接着再写个循环展开优化下吧， 把中间循环展开成
+下面试一下给矩阵乘法循环展开， 
+
+首先是展开一层， 把 j++ 打进循环：
 
 ```c
-for(int j = 0; j < k / 8; j += 2)
+double temp = mat1 -> data[i * n + l];
+__m256d avx_resister1 = _mm256_set1_pd(temp);
+__m256d avx_resister2;
+__m256d avx_resister3;
+int max_index = k / 8 * 8;
+
+for(int j = 0; j < max_index / 4;)
 {
     avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
     //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
@@ -731,214 +849,70 @@ for(int j = 0; j < k / 8; j += 2)
     
     j++;
     avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-    //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
     avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
     _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
+
+    j++;
+}
+
+for(int j = max_index; j < k; j++)
+{
+    result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
 }
 ```
 
-接下来跑了下数据给我惊到了：
 
 ```shell
+This is -O3 Optimization
+Matrix Multiplication: 0.683357 seconds
+Matrix Power: 1.260901 seconds
 testing new matrix
-Matrix Addition: 0.001333 seconds
-Matrix Multiplication: 0.409230 seconds
-Matrix Power: 0.785360 seconds
-Matrix Negation: 0.001487 seconds
-Matrix Absolute: 0.002141 seconds
+Matrix Multiplication: 1.176709 seconds
+Matrix Power: 2.194075 seconds
 ```
 
-就一个循环展开直接比没展开的快了一倍。。。。这里应该是充分利用了 CPU 流水线， 而且向量寄存器的个数也没有超
-
-那我再展开一层试试：
+然后试试不打进循环的展开一层：
 
 ```c
-for(int j = 0; j < k / 16; j += 4)
+double temp = mat1 -> data[i * n + l];
+__m256d avx_resister1 = _mm256_set1_pd(temp);
+__m256d avx_resister2;
+__m256d avx_resister3;
+int max_index = k / 8 * 8;
+
+for(int j = 0; j < max_index / 4; j += 2)
 {
     avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
     //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
     avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
     _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-    
-    j++;
-    avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-    //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-    avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-    _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
 
-    j++;
-    avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-    //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
+    avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + (j + 1) * 4);
     avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-    _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
-
-    j++;
-    avx_resister2 = _mm256_loadu_pd(mat2 -> data + l * k + j * 4);
-    //result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
-    avx_resister3 = _mm256_mul_pd(avx_resister1, avx_resister2);
-    _mm256_storeu_pd(result -> data + i * k + j * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + j * 4), avx_resister3));
+    _mm256_storeu_pd(result -> data + i * k + (j + 1) * 4, _mm256_add_pd(_mm256_loadu_pd(result -> data + i * k + (j + 1) * 4), avx_resister3));
 }
-```
 
-看了下效果又把我惊到了。。。这也太快了, 循环展开 yyds!!!
-
-```shell
-testing new matrix
-Matrix Addition: 0.002069 seconds
-Matrix Multiplication: 0.182367 seconds
-Matrix Power: 0.357646 seconds
-Matrix Negation: 0.001076 seconds
-Matrix Absolute: 0.001368 seconds
-```
-
-那我再展开一层试试， 主要是看下什么时候就不能继续展开提速了：
-
-```c
-for(int j = 0; j < k / 32; j += 8)
-```
-
-呃， 居然还真的又变快了。。。
-
-```shell
-testing new matrix
-Matrix Addition: 0.001708 seconds
-Matrix Multiplication: 0.113992 seconds
-Matrix Power: 0.216292 seconds
-Matrix Negation: 0.001331 seconds
-Matrix Absolute: 0.001350 seconds
-```
-
-为什么可以展开这么多层一直提速？
-
-再来展开一层， 循环展开我跟你拼了！！
-
-```c
-for(int j = 0; j < k / 64; j += 16)
-```
-
-``` shell
-testing new matrix
-Matrix Addition: 0.001407 seconds
-Matrix Multiplication: 0.065362 seconds
-Matrix Power: 0.136040 seconds
-Matrix Negation: 0.001458 seconds
-Matrix Absolute: 0.001399 seconds
-```
-
-现在已经是 -O3 的 12 倍速度了：
-
-```shell
-This is -O3 Optimization
-Matrix Addition: 0.001275 seconds
-Matrix Multiplication: 0.738868 seconds
-Matrix Power: 1.294441 seconds
-Matrix Negation: 0.000558 seconds
-Matrix Absolute: 0.000418 seconds
-```
-
-再来展开一层就结束！
-
-```c
-for(int j = 0; j < k / 128; j += 32)
-```
-
-OK, 现在也正好到了循环展开的瓶颈了:
-
-```shell
-testing new matrix
-Matrix Addition: 0.001609 seconds
-Matrix Multiplication: 0.137346 seconds
-Matrix Power: 0.286867 seconds
-Matrix Negation: 0.001318 seconds
-Matrix Absolute: 0.001151 seconds
-```
-
-现在已经没有上次展开的效果好了。 循环展开的越多， 生成代码也就越大， 也会影响代码 load 的性能。
-
-所以循环展开居然可以提升这么大的速度！！！我要把之前向量化的都继续展开一下
-
-首先是 fill_matrix， 这里还可以复用这个 avx_register， 很爽
-
-```c
-void fill_matrix(matrix *mat, double val) 
+for(int j = max_index; j < k; j++)
 {
-    __m256d avx_register = _mm256_set_pd(val, val, val, val);
-    // set the avx_register with 4 val
-    //#pragma omp parallel for
-    for(int i = 0; i < mat -> rows * mat -> cols / 32; i += 8)
-    {
-        _mm256_storeu_pd(mat -> data + i * 4, avx_register);
-        // store the avx_register to the data
-        _mm256_storeu_pd(mat -> data + (i + 1) * 4, avx_register);
-        _mm256_storeu_pd(mat -> data + (i + 2) * 4, avx_register);
-        _mm256_storeu_pd(mat -> data + (i + 3) * 4, avx_register);
-        _mm256_storeu_pd(mat -> data + (i + 4) * 4, avx_register);
-        _mm256_storeu_pd(mat -> data + (i + 5) * 4, avx_register);
-        _mm256_storeu_pd(mat -> data + (i + 6) * 4, avx_register);
-        _mm256_storeu_pd(mat -> data + (i + 7) * 4, avx_register);
-    }   
-
-    for(int i = mat -> rows * mat -> cols / 4 * 4; i < mat -> rows * mat -> cols; i++)
-    {
-        // For the remaining part
-        // use regular way to set the value
-        mat -> data[i] = val;
-    }
+    result -> data[i * k + j] += temp * mat2 -> data[l * k + j];
 }
 ```
 
-然后展开下矩阵加法， 展开到了这个程度：
-
-```c
-for(int i = 0; i < mat1 -> rows * mat1 -> cols / 64; i += 16)
-```
-
-现在已经快得不像样了：
-
-``` shell
-This is -O3 Optimization
-Matrix Addition: 0.001222 seconds
-Matrix Multiplication: 0.646367 seconds
-Matrix Power: 1.320650 seconds
-Matrix Negation: 0.000560 seconds
-Matrix Absolute: 0.000425 seconds
-testing new matrix
-Matrix Addition: 0.000059 seconds
-Matrix Multiplication: 0.064372 seconds
-Matrix Power: 0.128403 seconds
-Matrix Negation: 0.001177 seconds
-Matrix Absolute: 0.001219 seconds
-```
-
-接着我用同样策略展开了其他函数， 最后的效果是这样的：
+看看效果：
 
 ```shell
 This is -O3 Optimization
-Matrix Addition: 0.000794 seconds
-Matrix Multiplication: 0.693238 seconds
-Matrix Power: 1.478489 seconds
-Matrix Negation: 0.000512 seconds
-Matrix Absolute: 0.000356 seconds
-testing new matrix
-Matrix Addition: 0.000056 seconds
-Matrix Multiplication: 0.068220 seconds
-Matrix Power: 0.142667 seconds
-Matrix Negation: 0.000056 seconds
-Matrix Absolute: 0.000066 seconds
+Matrix Addition: 0.001412 seconds
+Matrix Multiplication: 0.770085 seconds
+Matrix Power: 1.528365 seconds
+Matrix Addition: 0.001900 seconds
+Matrix Multiplication: 1.256015 seconds
+Matrix Power: 2.413503 seconds
 ```
 
-我突然又发现 pow 函数有一个地方可以向量化， 我来搞搞看（我的 pow 是用快速幂的思想， 以矩阵乘法为基础实现的）
+这个好像性能好一点！
 
-好吧， pow 函数向量化加速完效果不是很明显， 主要是瓶颈不在那里
-
-```shell
-testing new matrix
-Matrix Addition: 0.000051 seconds
-Matrix Multiplication: 0.070943 seconds
-Matrix Power: 0.134328 seconds
-Matrix Negation: 0.000030 seconds
-Matrix Absolute: 0.000049 seconds
-```
+其他的矩阵操作都可以类似循环展开， 这里就不赘述了。
 
 # 总结
 
@@ -946,36 +920,76 @@ Matrix Absolute: 0.000049 seconds
 
 (如果您想运行我的性能测试脚本， 您可以执行 `./exp_speed.sh`)
 
+
 ```shell
+testing the correctness of the new one
+Addition test passed.
+Subtraction test passed.
+Absolute value test passed.
+Fill matrix test passed.
+Negation test passed.
+Multiplication test passed.
+Power test passed.
+
 testing old matrix
-Matrix Addition: 0.001596 seconds
-Matrix Multiplication: 2.653449 seconds
-Matrix Power: 4.901911 seconds
-Matrix Negation: 0.001422 seconds
-Matrix Absolute: 0.001555 seconds
-This is -O3 Optimization
-Matrix Addition: 0.000789 seconds
-Matrix Multiplication: 0.616525 seconds
-Matrix Power: 1.319023 seconds
-Matrix Negation: 0.000850 seconds
-Matrix Absolute: 0.000671 seconds
+Matrix Addition: 0.001653 seconds
+Matrix Multiplication: 2.568522 seconds
+Matrix Power: 5.446699 seconds
+Matrix Negation: 0.001792 seconds
+Matrix Absolute: 0.001848 seconds
+
 testing new matrix
-Matrix Addition: 0.000054 seconds
-Matrix Multiplication: 0.060538 seconds
-Matrix Power: 0.125941 seconds
-Matrix Negation: 0.000034 seconds
-Matrix Absolute: 0.000045 seconds
+Matrix Addition: 0.001640 seconds
+Matrix Multiplication: 1.072721 seconds
+Matrix Power: 2.048053 seconds
+Matrix Negation: 0.001170 seconds
+Matrix Absolute: 0.001244 seconds
+
+This is -O3 Optimization of the old one
+Matrix Addition: 0.001048 seconds
+Matrix Multiplication: 0.676902 seconds
+Matrix Power: 1.265835 seconds
+Matrix Negation: 0.000657 seconds
+Matrix Absolute: 0.000552 seconds
+
+This is -O3 Optimization of the new one
+Matrix Addition: 0.000786 seconds
+Matrix Multiplication: 0.238256 seconds
+Matrix Power: 0.426238 seconds
+Matrix Negation: 0.000544 seconds
+Matrix Absolute: 0.000374 seconds
 ```
 
 也就是，我优化过的矩阵运算优化程度如下：
 
 ```shell
-矩阵操作                            比原来快了                  比原来的 +O3优化快了
-Matrix Addition:                   29.56倍                       14.61倍
-Matrix Multiplication:             43.84倍                       10.18倍
-Matrix Power:                      38.92倍                       10.48倍
-Matrix Negation:                   41.82倍                       25.00倍
-Matrix Absolute:                   34.56倍                       14.91倍
+优化前后都不加 -O3 优化的版本：
+矩阵操作                            加速倍数                  
+Matrix Addition:                   1.01
+Matrix Multiplication:             2.40
+Matrix Power:                      2.66
+Matrix Negation:                   1.53
+Matrix Absolute:                   1.49 
+
+优化前后都加 -O3 优化的版本
+矩阵操作                            加速倍数             
+Matrix Addition:                   1.33
+Matrix Multiplication:             2.83
+Matrix Power:                      2.97
+Matrix Negation:                   1.20
+Matrix Absolute:                   1.47
+```
+
+如果我们看最后的加速版本与最初的版本对比， 可以得到：
+
+```shell
+最终加速程度
+矩阵操作                            加速倍数             
+Matrix Addition:                   2.10
+Matrix Multiplication:             10.78
+Matrix Power:                      12.78
+Matrix Negation:                   3.30
+Matrix Absolute:                   4.94
 ```
 
 我主要采取的优化手段是 循环互换 + avx 向量化 + 循环展开， 有少部分使用了 OpenMP 和 函数内联。

@@ -1,8 +1,9 @@
-#include "matrix.h"
+#include "matrix_old.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
+#include "math.h"
 
 // Include SSE intrinsics
 #if defined(_MSC_VER)
@@ -30,18 +31,18 @@
 */
 
 /* Generates a random double between low and high */
-double rand_double(double low, double high) {
+double rand_double_old(double low, double high) {
     double range = (high - low);
     double div = RAND_MAX / range;
     return low + (rand() / div);
 }
 
 /* Generates a random matrix */
-void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
+void rand_matrix_old(matrix *result, unsigned int seed, double low, double high) {
     srand(seed);
     for (int i = 0; i < result->rows; i++) {
         for (int j = 0; j < result->cols; j++) {
-            set(result, i, j, rand_double(low, high));
+            set_old(result, i, j, rand_double_old(low, high));
         }
     }
 }
@@ -54,7 +55,7 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
  * You should return -1 if either `rows` or `cols` or both have invalid values, or if any
  * call to allocate memory in this function fails. Return 0 upon success.
  */
-int allocate_matrix(matrix **mat, int rows, int cols) 
+int allocate_matrix_old(matrix **mat, int rows, int cols) 
 {
     if(rows < 1 || cols < 1)
     {
@@ -110,7 +111,7 @@ int allocate_matrix(matrix **mat, int rows, int cols)
  * You should return -1 if either `rows` or `cols` or both are non-positive or if any
  * call to allocate memory in this function fails. Return 0 upon success.
  */
-int allocate_matrix_ref(matrix **mat, matrix *from, int offset, int rows, int cols) {
+int allocate_matrix_ref_old(matrix **mat, matrix *from, int offset, int rows, int cols) {
     if(rows < 1 || cols < 1)
     {
         return -1;
@@ -134,7 +135,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int offset, int rows, int co
  * or if `mat` is the last existing slice of its parent matrix and its parent matrix has no other references
  * (including itself). You cannot assume that mat is not NULL.
  */
-void deallocate_matrix(matrix *mat) {
+void deallocate_matrix_old(matrix *mat) {
     if(mat == NULL) 
     {
         return;
@@ -149,7 +150,7 @@ void deallocate_matrix(matrix *mat) {
             mat -> parent -> ref_cnt--;
             if(mat -> parent -> ref_cnt == 0)
             {
-                deallocate_matrix(mat -> parent);
+                deallocate_matrix_old(mat -> parent);
                 //recursively apply it mat -> parent
             }
         }
@@ -167,7 +168,7 @@ void deallocate_matrix(matrix *mat) {
  * Returns the double value of the matrix at the given row and column.
  * You may assume `row` and `col` are valid.
  */
-double get(matrix *mat, int row, int col) {
+double get_old(matrix *mat, int row, int col) {
     return mat -> data[row * mat -> cols + col];
 }
 
@@ -175,14 +176,14 @@ double get(matrix *mat, int row, int col) {
  * Sets the value at the given row and column to val. You may assume `row` and
  * `col` are valid
  */
-void set(matrix *mat, int row, int col, double val) {
+void set_old(matrix *mat, int row, int col, double val) {
     mat -> data[row * mat -> cols + col] = val;
 }
 
 /*
  * Sets all entries in mat to val
  */
-void fill_matrix(matrix *mat, double val) {
+void fill_matrix_old(matrix *mat, double val) {
     for(int i = 0; i < mat -> rows * mat -> cols; i++)
     {
         mat -> data[i] = val;
@@ -193,7 +194,7 @@ void fill_matrix(matrix *mat, double val) {
  * Store the result of adding mat1 and mat2 to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+int add_matrix_old(matrix *result, matrix *mat1, matrix *mat2) {
     if(result -> rows != mat1 -> rows || result -> cols != mat1 -> cols || result -> rows != mat2 -> rows || result -> cols != mat2 -> cols)
     {
 
@@ -216,7 +217,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Store the result of subtracting mat2 from mat1 to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+int sub_matrix_old(matrix *result, matrix *mat1, matrix *mat2) {
    if(result -> rows != mat1 -> rows || result -> cols != mat1 -> cols || result -> rows != mat2 -> rows || result -> cols != mat2 -> cols)
     {
         return -1;
@@ -233,7 +234,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
-int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) 
+int mul_matrix_old(matrix *result, matrix *mat1, matrix *mat2) 
 {
     if(mat1 -> cols != mat2 -> rows || result -> rows != mat1 -> rows || result -> cols != mat2 -> cols)
     {
@@ -283,7 +284,7 @@ int fast_pow(int a, int b) {
     return result;
 }
 */
-int pow_matrix(matrix *result, matrix *mat, int pow) 
+int pow_matrix_old(matrix *result, matrix *mat, int pow) 
 {
     #ifdef DEBUG
     printf("Start! pow is : %d\n", pow);
@@ -319,7 +320,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
         return 0;
     }
     matrix * temp;
-    if(allocate_matrix(&temp, mat -> rows, mat -> cols) == -1)
+    if(allocate_matrix_old(&temp, mat -> rows, mat -> cols) == -1)
     {
         return -1;
     }
@@ -336,16 +337,16 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
         if(pow & 1)
         {
             matrix * temp3;
-            if(allocate_matrix(&temp3, result -> rows, result -> cols) == -1)
+            if(allocate_matrix_old(&temp3, result -> rows, result -> cols) == -1)
             {
                 return -1;
             }
-            mul_matrix(temp3, result, temp);
+            mul_matrix_old(temp3, result, temp);
             for(int i = 0; i < mat -> rows * mat -> cols; i++)
             {
                 result -> data[i] = temp3 -> data[i];
             }
-            deallocate_matrix(temp3);
+            deallocate_matrix_old(temp3);
 
             #ifdef DEBUG 
             printf("the result matrix here is : \n" );
@@ -368,16 +369,16 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
         if(pow > 0)
         {
             matrix * temp2;
-            if(allocate_matrix(&temp2, mat -> rows, mat -> cols) == -1)
+            if(allocate_matrix_old(&temp2, mat -> rows, mat -> cols) == -1)
             {
                 return -1;
             }
-            mul_matrix(temp2, temp, temp);
+            mul_matrix_old(temp2, temp, temp);
             for(int i = 0; i < mat -> rows * mat -> cols; i++)
             {
                 temp -> data[i] = temp2 -> data[i];
             }
-            deallocate_matrix(temp2);
+            deallocate_matrix_old(temp2);
         }
     }
     return 0;
@@ -387,7 +388,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow)
  * Store the result of element-wise negating mat's entries to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int neg_matrix(matrix *result, matrix *mat) {
+int neg_matrix_old(matrix *result, matrix *mat) {
     if(result -> rows != mat -> rows || result -> cols != mat -> cols)
     {
         return -1;
@@ -403,14 +404,14 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Store the result of taking the absolute value element-wise to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int abs_matrix(matrix *result, matrix *mat) {
+int abs_matrix_old(matrix *result, matrix *mat) {
     if(result -> rows != mat -> rows || result -> cols != mat -> cols)
     {
         return -1;
     }
     for(int i = 0; i < mat -> rows * mat -> cols; i++)
     {
-        result -> data[i] = abs(mat -> data[i]);
+        result -> data[i] = fabs(mat -> data[i]);
     }
     return 0;
 }
