@@ -4,7 +4,7 @@
 #include "matrix.h" 
 
 #define MATRIX_SIZE 1000 // 假设矩阵大小为1000x1000
-#define NUM_EXPERIMENTS 10 // 每个操作的实验次数
+#define NUM_EXPERIMENTS 4 // 每个操作的实验次数
 
 // 定义测试函数
 void test_performance() {
